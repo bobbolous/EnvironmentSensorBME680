@@ -11,7 +11,7 @@
     Setup:
     Arduino UNO
     LCD Keypad Shield and 
-    BME680 connected to +5V (red), NGD (black), A4 (SDA, green), A5 (SCL, yellow), 
+    BME680 connected to +5V (red), GND (black), A4 (SDA, green), A5 (SCL, yellow), 
 */
 
 
@@ -26,7 +26,7 @@
 
 //for Sensor BME680
 #include <Wire.h> //I2C library
-#include <Adafruit_Sensor.h> //not really needed here (Adafruit_BME280.h needs this)
+// #include <Adafruit_Sensor.h> //not really needed here (Adafruit_BME280.h needs this)
 #include <Adafruit_BME680.h>
 #define SEALEVELPRESSURE_HPA (1013.25)
 
@@ -159,6 +159,16 @@ void serialReadHandler()
   }
 }
 
+void welcomeLcd()
+{
+  // print welcome message
+  lcd.setCursor(0, 0);           // set cursor to beginning
+  lcd.print("Welcome!");         // print a simple message
+  lcd.setCursor(0, 1);           // cursor to second line
+  lcd.print("EnviroSens ");      // print Version
+  lcd.print(VERSION);
+}
+
 void setup()
 {
   // initialize serial communication at 115200 bits per second:
@@ -175,12 +185,7 @@ void setup()
   lcd.begin(16, 2);              // initialise LCD
   lcd.clear();
   
-  // print welcome message
-  lcd.setCursor(0, 0);           // set cursor to beginning
-  lcd.print("Welcome!");         // print a simple message
-  lcd.setCursor(0, 1);           // cursor to second line
-  lcd.print("EnviroSens ");      // print Version
-  lcd.print(VERSION);
+  welcomeLcd();
 
   delay(2000); // wait so someone can read the display
 
@@ -188,7 +193,7 @@ void setup()
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME680 sensor, check wiring!");
     lcd.setCursor(0, 1);
-    lcd.print("No BME280 found...");
+    lcd.print("No BME6µ80 found...");
     while (1);
   }
 
