@@ -3,30 +3,31 @@
 
     Changelog:
 
-    Version 0.00a: 26.04.2018
+    Version 0.01a: 20.12.2019
 	  -tested and working
       -initial version
       -derrived from Version EnvironemtSensorBME280 0.21a of 26.04.2018
 
     Setup:
-    Arduino UNO
-    LCD Keypad Shield and 
-    BME680 connected to +5V (red), GND (black), A4 (SDA, green), A5 (SCL, yellow), 
+    Arduino UNO with LCD Keypad Shield OR Arduino Micro
+    BME680 connected to +5V (red), GND (black), SDA (green), SCL (yellow), 
+    for Arduino UNO: A4 (SDA), A5 (SCL)
+    for Arduino Micro: 2 (SDA), 3 (SCL)
 */
+#define DEBUGGING_MODE 0 //debugging flag
 
-
-#define VERSION "0.00a"
+#define VERSION "0.01a"
 
 #define SERIAL_INTERVAL 1000 //interval for sending serial [ms]
 #define LCD_INTERVAL 1000 //interval for refreshing LCD [ms] 
-#define BME_INTERVAL 2000 //interval for reading BME280 (may collide with sensor standby)
+#define BME_INTERVAL 1000 //interval for reading BME280 (may collide with sensor standby)
 #define BLINK_INTERVAL 1000 //interval for blinking (LED, LCD heart)
 //#define NO_VALUE_FLOAT 0.00f //dummy value for error data
 //#define SENSOR_ERROR_STRING "/SENSOR ERROR/" //string to print on error													 
 
 //for Sensor BME680
 #include <Wire.h> //I2C library
-// #include <Adafruit_Sensor.h> //not really needed here (Adafruit_BME280.h needs this)
+#include <Adafruit_Sensor.h> //not really needed here (Adafruit_BME280.h needs this)
 #include <Adafruit_BME680.h>
 #define SEALEVELPRESSURE_HPA (1013.25)
 
@@ -146,10 +147,27 @@ void displayHandler()
 
 void serialWriteHandler()
 {
-  if (t_lastSerial < (millis() - SERIAL_INTERVAL)) {
+  if (!sensorError)
+  {
+    if (t_lastSerial < (millis() - SERIAL_INTERVAL)) {
     t_lastSerial = millis();
-    Serial.println(String(millis()/1000) + "; " + String(temperature) + "; " + String(humidity) + "; " + String(pressure) + "; " + String(gas) + "; ");
+    Serial.println(
+      String(millis()/1000) + "; " + 
+      String(temperature) + "; " + 
+      String(humidity) + "; " + 
+      String(pressure) + "; " + 
+      String(gas) + "; " + 
+      String(sensorError) + ";");
+    }
+  } else
+  {
+    Serial.println("ERROR: Sensor");
   }
+}
+
+void serialDebugMsg(String(tmpDebugString))
+{
+  if (DEBUGGING_MODE) Serial.println("DEBUG: " + String(millis()) + ": " + tmpDebugString);
 }
 
 void serialReadHandler()
@@ -173,9 +191,12 @@ void setup()
 {
   // initialize serial communication at 115200 bits per second:
   Serial.begin(115200);
+  while (!Serial);
+  serialDebugMsg("Serial initialised");
 
   // initialise pins
   pinMode(LED_BUILTIN, OUTPUT);
+  serialDebugMsg("LED_BUILTIN initialised");
 
   // initialise LCD
   lcd.createChar(0, heart);
@@ -184,25 +205,29 @@ void setup()
   lcd.createChar(3, ohm);
   lcd.begin(16, 2);              // initialise LCD
   lcd.clear();
-  
   welcomeLcd();
+  serialDebugMsg("LCD initialised");
 
   delay(2000); // wait so someone can read the display
 
-  // initialse sensor
+  // initialse sensor 
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME680 sensor, check wiring!");
     lcd.setCursor(0, 1);
-    lcd.print("No BME6µ80 found...");
+    lcd.print("No BME680 found...");
     while (1);
   }
 
   // Set up oversampling and filter initialization
+  serialDebugMsg("Startet BME setup");
   bme.setTemperatureOversampling(BME680_OS_8X);
   bme.setHumidityOversampling(BME680_OS_2X);
   bme.setPressureOversampling(BME680_OS_4X);
   bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
   bme.setGasHeater(320, 150); // 320*C for 150 ms
+  serialDebugMsg("Ended BME setup");
+
+  serialDebugMsg("End setup()");
 }
 
 void loop()
@@ -227,10 +252,10 @@ void loop()
     if (! bme.performReading()) {
       sensorError = 1;
     } else {
-    humidity = bme.readHumidity();
-    temperature = bme.readTemperature();
-    pressure = bme.readPressure() / 100.0f;
-    gas = bme.gas_resistance / 1000.0f;
+    humidity = bme.humidity;
+    temperature = bme.temperature;
+    pressure = bme.pressure / 100.0f;
+    gas = bme.gas_resistance / 1000.00f;
     }
   }
 
@@ -238,8 +263,6 @@ void loop()
   serialWriteHandler();
   displayHandler();
   
-
-
 /*
     switch (lcd_key)               // depending on which button was pushed, we perform an action
     {
